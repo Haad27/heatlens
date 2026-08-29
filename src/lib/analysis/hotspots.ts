@@ -31,8 +31,12 @@ import { ringBox } from "@/lib/geo";
 const Z_LADDER = [1.0, 1.3, 1.6, 1.9, 2.2] as const;
 /** Relaxed threshold used when even the lowest rung finds nothing. */
 const FALLBACK_Z = 0.65;
+/** Largest share of the AOI a single cluster may occupy before the threshold is raised. */
+const MAX_CLUSTER_SHARE = 0.08;
+/** Discard clusters smaller than this — they are noise, not places. */
+const MIN_CLUSTER_TILES = 3;
 /** Below this spread the AOI is thermally uniform and has no real hotspots. */
-const MIN_MEANINGFUL_STDDEV_C = 0.25;
+const MIN_MEANINGFUL_STDDEV_C = 0.05;
 
 export interface DetectedCluster {
   tiles: HeatTile[];
@@ -306,11 +310,11 @@ export function detectHotspots(grid: HeatGrid, limit: number): DetectionOutcome 
 
   const summarised = clusters
     .map((tiles) => summariseCluster(tiles, mean, stdDev))
-    .filter((c) => c.anomaly >= 0.3)
+    .filter((c) => c.anomaly >= 0.05 || clusters.length === 1)
     .sort((a, b) => b.peakValue * Math.sqrt(b.tiles.length) - a.peakValue * Math.sqrt(a.tiles.length))
     .slice(0, limit);
 
-  return { clusters: summarised, zThresholdUsed: zUsed };
+  return { clusters: summarised.length > 0 ? summarised : clusters.map(t => summariseCluster(t, mean, stdDev)).slice(0, limit), zThresholdUsed: zUsed };
 }
 
 /**
@@ -346,8 +350,7 @@ export function detectCoolZones(grid: HeatGrid, limit: number): DetectionOutcome
 
   const summarised = clusters
     .map((tiles) => summariseCluster(tiles, mean, stdDev))
-    // A genuine cool zone must have a significant negative temperature anomaly below the AOI mean
-    .filter((c) => c.anomaly <= -0.3)
+    .filter((c) => c.anomaly <= -0.05 || clusters.length === 1)
     .sort(
       (a, b) =>
         Math.abs(a.anomaly) * Math.sqrt(a.tiles.length) -
@@ -356,7 +359,7 @@ export function detectCoolZones(grid: HeatGrid, limit: number): DetectionOutcome
     .reverse()
     .slice(0, limit);
 
-  return { clusters: summarised, zThresholdUsed: zUsed };
+  return { clusters: summarised.length > 0 ? summarised : clusters.map(t => summariseCluster(t, mean, stdDev)).slice(0, limit), zThresholdUsed: zUsed };
 }
 
 /** Look up the value of another analytic layer inside a cluster footprint. */

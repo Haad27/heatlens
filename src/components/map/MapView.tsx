@@ -270,7 +270,7 @@ export default function MapView({
               click: () =>
                 onSelectHotspot(hotspot.id === selectedHotspotId ? null : hotspot.id),
             }}
-            zIndexOffset={hotspot.id === selectedHotspotId ? 1000 : 0}
+            zIndexOffset={hotspot.id === selectedHotspotId ? 1500 : 1000}
           />
         ))}
 
@@ -279,6 +279,7 @@ export default function MapView({
             key={zone.id}
             position={[zone.center.lat, zone.center.lng]}
             icon={coolZoneIcon(index)}
+            zIndexOffset={900}
           />
         ))}
       </MapContainer>
