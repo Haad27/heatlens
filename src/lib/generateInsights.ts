@@ -1,4 +1,10 @@
-import { ANTHROPIC_API_KEY, ANTHROPIC_MODEL, GEMINI_API_KEY, GEMINI_MODEL } from "@/lib/config";
+import {
+  ANTHROPIC_API_KEY,
+  ANTHROPIC_MODEL,
+  GEMINI_API_KEY,
+  GEMINI_FALLBACK_MODELS,
+  GEMINI_MODEL,
+} from "@/lib/config";
 import type { AoiSummary, Hotspot, Insights } from "@/lib/types";
 
 /**
@@ -162,7 +168,7 @@ function safeParseLlmJson(rawText: string): Partial<LlmShape> | null {
   return null;
 }
 
-async function callGemini(input: InsightInput): Promise<LlmShape | null> {
+async function callGoogleModel(modelName: string, input: InsightInput): Promise<LlmShape | null> {
   if (!GEMINI_API_KEY) return null;
 
   const demoCaveat = input.isDemoData
@@ -170,36 +176,51 @@ async function callGemini(input: InsightInput): Promise<LlmShape | null> {
     : "";
 
   try {
-    console.log(`   🤖 [Google Gemini] Generating executive narrative using "${GEMINI_MODEL}"...`);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    console.log(`   🤖 [Google AI] Generating executive narrative using "${modelName}"...`);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+
+    const isGemma = modelName.toLowerCase().startsWith("gemma");
+    const isGemini = modelName.toLowerCase().startsWith("gemini");
+
+    const requestBody: Record<string, unknown> = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: isGemma
+                ? `${SYSTEM_PROMPT}\n\nFindings:\n\n${structuredFacts(input)}${demoCaveat}\n\nRespond ONLY with valid JSON matching: {"headline": string, "narrative": string, "keyFindings": string[]}`
+                : `Findings:\n\n${structuredFacts(input)}${demoCaveat}`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
+        ...(isGemini ? { responseMimeType: "application/json" } : {}),
+      },
+    };
+
+    if (isGemini) {
+      requestBody.system_instruction = {
+        parts: [{ text: SYSTEM_PROMPT }],
+      };
+    }
+
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `Findings:\n\n${structuredFacts(input)}${demoCaveat}` }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json",
-        },
-      }),
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
       cache: "no-store",
     });
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      console.error(`   ⚠️ [Google Gemini] API returned ${res.status}: ${errBody.slice(0, 200)}`);
+      console.warn(`   ⚠️ [Google AI] Model "${modelName}" returned ${res.status}: ${errBody.slice(0, 180)}`);
       return null;
     }
 
@@ -208,7 +229,7 @@ async function callGemini(input: InsightInput): Promise<LlmShape | null> {
     };
     const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      console.warn("   ⚠️ [Google Gemini] No text in candidate response");
+      console.warn(`   ⚠️ [Google AI] No text in candidate response from "${modelName}"`);
       return null;
     }
 
@@ -221,20 +242,33 @@ async function callGemini(input: InsightInput): Promise<LlmShape | null> {
       !Array.isArray(parsed.keyFindings) ||
       parsed.keyFindings.some((f) => typeof f !== "string")
     ) {
-      console.warn("   ⚠️ [Google Gemini] Response JSON could not be parsed or did not match expected shape");
+      console.warn(`   ⚠️ [Google AI] Response from "${modelName}" could not be parsed into expected shape`);
       return null;
     }
 
-    console.log("   ✨ [Google Gemini] Narrative and key findings generated successfully.");
+    console.log(`   ✨ [Google AI] Narrative and key findings generated successfully with "${modelName}".`);
     return {
       headline: parsed.headline.trim(),
       narrative: parsed.narrative.trim(),
       keyFindings: parsed.keyFindings.map((f) => f.trim()).filter(Boolean).slice(0, 5),
     };
   } catch (err) {
-    console.error("   ⚠️ [Google Gemini] Exception during API call:", err);
+    console.error(`   ⚠️ [Google AI] Exception during "${modelName}" call:`, err);
     return null;
   }
+}
+
+async function callGeminiWithFallbacks(input: InsightInput): Promise<{ shape: LlmShape; usedModel: string } | null> {
+  const modelsToTry = Array.from(new Set([GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS])).filter(Boolean);
+
+  for (const model of modelsToTry) {
+    const result = await callGoogleModel(model, input);
+    if (result) {
+      return { shape: result, usedModel: model };
+    }
+  }
+
+  return null;
 }
 
 async function callAnthropic(input: InsightInput): Promise<LlmShape | null> {
@@ -415,14 +449,14 @@ export async function generateInsights(input: InsightInput): Promise<Insights> {
   const now = new Date().toISOString();
 
   if (GEMINI_API_KEY) {
-    const fromGemini = await callGemini(input);
+    const fromGemini = await callGeminiWithFallbacks(input);
     if (fromGemini) {
       return {
-        ...fromGemini,
+        ...fromGemini.shape,
         generator: "llm",
         provenance: {
           status: "live",
-          source: `Google ${GEMINI_MODEL}`,
+          source: `Google ${fromGemini.usedModel}`,
           fetchedAt: now,
           note: "Wording only. Every figure was computed by the deterministic analysis engine and passed to the model as fixed input.",
         },

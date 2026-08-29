@@ -225,7 +225,10 @@ Create `.env.local` to connect live data services:
 | `FORTYGUARD_API_KEY` | FortyGuard API key for live 2m air temperature data | Optional | Deterministic spatial simulator |
 | `FORTYGUARD_MOCK_MODE` | Force simulator mode to preserve API credits | Optional | `false` |
 | `CENSUS_API_KEY` | US Census Bureau API key for live demographics | Optional | Baseline demographic profile |
-| `ANTHROPIC_API_KEY` | Claude API key for phrasing PDF executive summaries | Optional | Deterministic rule-based template |
+| `GEMINI_API_KEY` | Google Gemini API key for executive report phrasing | Optional | Rule-based template fallback |
+| `GEMINI_MODEL` | Primary Gemini model (e.g. `gemini-2.5-flash`) | Optional | `gemini-2.5-flash` |
+| `GEMINI_FALLBACK_MODELS` | Comma-separated Gemma / Gemini models if primary limits are reached | Optional | `gemma-2-27b-it,gemma-2-9b-it,gemini-2.0-flash` |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key (alternative LLM fallback) | Optional | Rule-based template fallback |
 | `KV_REST_API_URL` | Vercel KV / Upstash Redis URL for multi-region caching | Optional | In-memory LRU + local disk cache |
 | `KV_REST_API_TOKEN` | Vercel KV / Upstash Redis Token | Optional | - |
 
