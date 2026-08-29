@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/**
+ * Design tokens.
+ *
+ * Restrained neutral palette with a single teal accent, so the only saturated
+ * colour on screen belongs to the temperature scale. If the UI competes with
+ * the data for attention, the map stops being readable.
+ */
+@theme {
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #d5dae2;
+  --color-ink-300: #b0b9c7;
+  --color-ink-400: #7d8899;
+  --color-ink-500: #5b6678;
+  --color-ink-600: #454e5e;
+  --color-ink-700: #363d49;
+  --color-ink-800: #232932;
+  --color-ink-900: #151a21;
+  --color-ink-950: #0c1015;
+
+  --color-accent-50: #edfbf8;
+  --color-accent-100: #d2f5ee;
+  --color-accent-200: #a8ebe0;
+  --color-accent-300: #71dbcd;
+  --color-accent-400: #38c2b4;
+  --color-accent-500: #17a79b;
+  --color-accent-600: #0d857e;
+  --color-accent-700: #106a66;
+  --color-accent-800: #125553;
+  --color-accent-900: #134745;
+
+  /* Severity ramp, used for badges and hotspot rings. */
+  --color-severity-critical: #a50026;
+  --color-severity-high: #e34a33;
+  --color-severity-moderate: #f2a541;
+  --color-severity-watch: #6a9fb5;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-ink-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular figures everywhere a number is compared against another number. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ---------------------------------------------------------------------- */
+/* Leaflet overrides                                                       */
+/* ---------------------------------------------------------------------- */
+
+.leaflet-container {
+  background: var(--color-ink-100);
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.82) !important;
+  font-size: 10px !important;
+  color: var(--color-ink-500) !important;
+  backdrop-filter: blur(4px);
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-ink-600) !important;
+}
+
+.leaflet-control-zoom a {
+  border-radius: 8px !important;
+  color: var(--color-ink-700) !important;
+  border-color: var(--color-ink-200) !important;
+}
+
+.hotspot-marker {
+  background: transparent;
+  border: none;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Motion                                                                  */
+/* ---------------------------------------------------------------------- */
+
+@keyframes shimmer {
+  0% {
+    background-position: -480px 0;
+  }
+  100% {
+    background-position: 480px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-ink-100) 0%,
+    var(--color-ink-200) 50%,
+    var(--color-ink-100) 100%
+  );
+  background-size: 480px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.75;
+  }
+  70% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  animation: pulse-ring 2.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .pulse-ring {
+    animation: none;
+  }
+}
+
+/* Thin scrollbars in the side panel so the content keeps its full width. */
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-300) transparent;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-ink-300);
+  border-radius: 999px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Print — the report route is designed to be saved as a PDF from print    */
+/* ---------------------------------------------------------------------- */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break-before {
+    break-before: page;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+
+  .print-shadow-none {
+    box-shadow: none !important;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+
+  .leaflet-control-zoom,
+  .leaflet-control-attribution {
+    display: none !important;
+  }
+}
