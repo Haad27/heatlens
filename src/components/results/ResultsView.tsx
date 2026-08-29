@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { Building2, CheckCircle2, FlaskConical, Loader2, Thermometer, TreePine } from "lucide-react";
+import { Building2, CheckCircle2, FlaskConical, Loader2, TreePine } from "lucide-react";
 import DetailedAnalysis from "@/components/results/DetailedAnalysis";
 import RecommendationsPanel from "@/components/results/RecommendationsPanel";
+import Logo from "@/components/ui/Logo";
 import { Skeleton } from "@/components/ui/Primitives";
 import type { MapLayerKey } from "@/components/map/MapView";
 import type { AnalysisResult, HeatGrid, LatLng } from "@/lib/types";
@@ -95,7 +96,7 @@ export default function ResultsView({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-sm">
           <div className="flex items-center gap-2 px-4 py-3">
-            <Thermometer className="h-4 w-4 text-red-500" />
+            <Logo size="xs" />
             <h2 className="text-sm font-semibold text-ink-900">Heat Map Analysis</h2>
           </div>
           <div className="relative h-[22rem] border-t border-ink-100 sm:h-[28rem]">
@@ -247,7 +248,6 @@ export function AnalysisLoading({
           </span>
         </div>
 
-        {/* Progress Bar with Percentage */}
         <div className="mt-5 space-y-2">
           <div className="flex items-center justify-between text-xs font-medium text-ink-500">
             <span>Overall Progress</span>
@@ -273,13 +273,7 @@ export function AnalysisLoading({
             return (
               <li
                 key={step.name}
-                className={`flex items-start gap-2.5 text-sm transition-colors ${
-                  isCurrent
-                    ? "font-medium text-ink-900"
-                    : isCompleted
-                      ? "text-ink-800"
-                      : "text-ink-400"
-                }`}
+                className="flex items-start gap-2.5 text-sm transition-colors text-ink-700"
               >
                 <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
                   {isCompleted ? (

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { FlaskConical, Thermometer } from "lucide-react";
+import { FlaskConical } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 import LandingMapSelector from "@/components/landing/LandingMapSelector";
 import { FORTYGUARD_MOCK_MODE } from "@/lib/config";
 
@@ -13,9 +14,7 @@ export default function LandingPage() {
       <header className="border-b border-emerald-100/80 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-800">
-              <Thermometer className="h-4 w-4 text-emerald-100" />
-            </span>
+            <Logo size="md" />
             <span className="text-base font-semibold tracking-tight text-ink-900">HeatLens</span>
             <span className="hidden rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 sm:inline">
               AI-Powered Urban Climate Analysis

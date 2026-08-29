@@ -54,8 +54,8 @@ export const ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY");
 export const ANTHROPIC_MODEL = env("ANTHROPIC_MODEL") ?? "claude-sonnet-4-5";
 
 export const GEMINI_API_KEY = env("GEMINI_API_KEY");
-export const GEMINI_MODEL = env("GEMINI_MODEL") ?? "gemini-2.5-flash";
-export const GEMINI_FALLBACK_MODELS = (env("GEMINI_FALLBACK_MODELS") ?? "gemma-2-27b-it,gemma-2-9b-it,gemini-2.0-flash,gemini-1.5-flash")
+export const GEMINI_MODEL = env("GEMINI_MODEL") ?? "gemini-3.5-flash-lite";
+export const GEMINI_FALLBACK_MODELS = (env("GEMINI_FALLBACK_MODELS") ?? "gemini-3.1-flash-lite,gemma-4-31b-it,gemini-3.5-flash,gemma-4-26b-a4b-it")
   .split(",")
   .map((m) => m.trim())
   .filter(Boolean);

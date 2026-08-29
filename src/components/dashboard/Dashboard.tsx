@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FlaskConical, Thermometer } from "lucide-react";
+import { FlaskConical } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 import SearchBar from "@/components/dashboard/SearchBar";
 import DashboardWelcome from "@/components/dashboard/DashboardWelcome";
 import ResultsView, { AnalysisLoading } from "@/components/results/ResultsView";
@@ -223,9 +224,7 @@ export default function Dashboard({
     <div className="flex min-h-dvh flex-col bg-[#f3f6f8]">
       <header className="z-[1100] flex shrink-0 items-center gap-3 border-b border-ink-200 bg-white px-4 py-2.5">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-800">
-            <Thermometer className="h-4 w-4 text-emerald-100" />
-          </span>
+          <Logo size="sm" />
           <span className="hidden text-sm font-semibold tracking-tight text-ink-900 sm:block">
             HeatLens
           </span>

@@ -81,15 +81,18 @@ export function buildTemperatureScale(min: number, max: number): ColorScale {
   let lo: number;
   let hi: number;
 
-  if (dataSpan < 4.0) {
-    // When the temperature spread across the area is narrow or uniform (e.g. not too hot nor too cool),
+  if (dataSpan < 0.8) {
+    // When the temperature spread across the entire area is nearly flat/uniform (span < 0.8°C),
     // anchor the scale around standard ambient reference levels (~18°C cool to ~34°C hot, with ~26°C sweet spot)
     // so moderate / sweet-spot areas display the pleasant moderate yellow/green color instead of collapsing to dark blue.
     const naturalT = Math.max(0.15, Math.min(0.85, (mid - 18) / 16));
-    const targetSpan = Math.max(4.0, Math.max(0.5, dataSpan));
+    const targetSpan = 4.0;
     lo = mid - naturalT * targetSpan;
     hi = lo + targetSpan;
   } else {
+    // When there is real thermal contrast across the area, use the full dynamic range
+    // so cooler zones (parks, water, tree canopy) render as blue/teal, intermediate as yellow,
+    // and hotspots as red. This ensures cool zones are always visually blue/teal and never red.
     lo = min;
     hi = max;
   }

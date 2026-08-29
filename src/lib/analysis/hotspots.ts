@@ -264,11 +264,7 @@ function detectExtremaClusters(
     return { clusters: bestClusters.slice(0, limit), zUsed: bestZ };
   }
 
-  const sorted = [...tiles].sort((a, b) =>
-    mode === "hotspot" ? b.value - a.value : a.value - b.value,
-  );
-  const topSlice = sorted.slice(0, Math.min(tiles.length, 12));
-  return { clusters: [topSlice], zUsed: 0.1 };
+  return { clusters: [], zUsed: FALLBACK_Z };
 }
 
 export function detectHotspots(grid: HeatGrid, limit: number): DetectionOutcome {
@@ -310,6 +306,7 @@ export function detectHotspots(grid: HeatGrid, limit: number): DetectionOutcome 
 
   const summarised = clusters
     .map((tiles) => summariseCluster(tiles, mean, stdDev))
+    .filter((c) => c.anomaly >= 0.3)
     .sort((a, b) => b.peakValue * Math.sqrt(b.tiles.length) - a.peakValue * Math.sqrt(a.tiles.length))
     .slice(0, limit);
 
@@ -349,6 +346,8 @@ export function detectCoolZones(grid: HeatGrid, limit: number): DetectionOutcome
 
   const summarised = clusters
     .map((tiles) => summariseCluster(tiles, mean, stdDev))
+    // A genuine cool zone must have a significant negative temperature anomaly below the AOI mean
+    .filter((c) => c.anomaly <= -0.3)
     .sort(
       (a, b) =>
         Math.abs(a.anomaly) * Math.sqrt(a.tiles.length) -

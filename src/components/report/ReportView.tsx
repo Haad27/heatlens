@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { RecommendationCard } from "@/components/dashboard/HotspotDetail";
 import { Badge, ProvenanceBadge } from "@/components/ui/Badge";
+import Logo from "@/components/ui/Logo";
 import { Card, Divider, EmptyState, SectionHeading, Skeleton } from "@/components/ui/Primitives";
 import { SEVERITY_COLORS, SEVERITY_LABELS, VULNERABILITY_COLORS } from "@/lib/colors";
 import { loadAnalysisLocally } from "@/lib/clientStore";
@@ -216,8 +217,8 @@ export default function ReportView({ analysisId }: { analysisId: string }) {
         <Card className="p-6 print:border-0 print:p-0">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-accent-700">
-                <Thermometer className="h-3.5 w-3.5" />
+              <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-800">
+                <Logo size="xs" />
                 HeatLens urban heat assessment
               </p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink-900">
