@@ -75,9 +75,24 @@ export interface ColorScale {
 }
 
 export function buildTemperatureScale(min: number, max: number): ColorScale {
-  const span = Math.max(0.5, max - min);
-  const lo = min;
-  const hi = min + span;
+  const dataSpan = max - min;
+  const mid = (min + max) / 2;
+
+  let lo: number;
+  let hi: number;
+
+  if (dataSpan < 4.0) {
+    // When the temperature spread across the area is narrow or uniform (e.g. not too hot nor too cool),
+    // anchor the scale around standard ambient reference levels (~18°C cool to ~34°C hot, with ~26°C sweet spot)
+    // so moderate / sweet-spot areas display the pleasant moderate yellow/green color instead of collapsing to dark blue.
+    const naturalT = Math.max(0.15, Math.min(0.85, (mid - 18) / 16));
+    const targetSpan = Math.max(4.0, Math.max(0.5, dataSpan));
+    lo = mid - naturalT * targetSpan;
+    hi = lo + targetSpan;
+  } else {
+    lo = min;
+    hi = max;
+  }
 
   return {
     min: lo,

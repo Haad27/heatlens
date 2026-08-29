@@ -344,6 +344,10 @@ function MapLegend({ compact }: { compact: boolean }) {
           <span>High Heat Areas</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-[#fee08b] ring-1 ring-amber-300/80" />
+          <span>Moderate / Sweet Spot</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-[#6ec6b8]" />
           <span>Cooling Zones</span>
         </div>
