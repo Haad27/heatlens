@@ -69,6 +69,7 @@ function ViewportController({
   const lastHotspotId = useRef<string | null>(null);
 
   useEffect(() => {
+    map.invalidateSize();
     if (!bbox) {
       map.setView([center.lat, center.lng], map.getZoom() ?? 14);
       return;

@@ -80,6 +80,7 @@ export default function ReportView({ analysisId }: { analysisId: string }) {
       bbox: analysis.bbox,
       tiles: analysis.grid.tiles,
       hotspots: analysis.hotspots,
+      coolZones: analysis.brief?.coolZones,
       width: 900,
       height: 500,
       pixelRatio: 2,

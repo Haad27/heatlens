@@ -1,5 +1,5 @@
 import { SEVERITY_COLORS, buildTemperatureScale } from "@/lib/colors";
-import type { BoundingBox, HeatTile, Hotspot } from "@/lib/types";
+import type { BoundingBox, CoolZone, HeatTile, Hotspot } from "@/lib/types";
 
 /**
  * Composites a static map image in the browser for the PDF export.
@@ -37,6 +37,7 @@ export interface StaticMapOptions {
   bbox: BoundingBox;
   tiles?: HeatTile[];
   hotspots?: Hotspot[];
+  coolZones?: CoolZone[];
   width: number;
   height: number;
   /** Multiplier for output resolution. 2 keeps text and tile edges crisp in print. */
@@ -45,7 +46,7 @@ export interface StaticMapOptions {
 }
 
 export async function renderStaticMap(options: StaticMapOptions): Promise<string | null> {
-  const { bbox, width, height, pixelRatio = 2, overlayOpacity = 0.75 } = options;
+  const { bbox, width, height, pixelRatio = 2, overlayOpacity = 0.72 } = options;
 
   const canvas = document.createElement("canvas");
   canvas.width = width * pixelRatio;
@@ -111,28 +112,45 @@ export async function renderStaticMap(options: StaticMapOptions): Promise<string
 
   if (options.tiles?.length) {
     const values = options.tiles.map((t) => t.value);
-    const scale = buildTemperatureScale(Math.min(...values), Math.max(...values));
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const scale = buildTemperatureScale(minVal, maxVal);
+
+    const [c1X, c1Y] = project(bbox.north, bbox.west);
+    const [c2X, c2Y] = project(bbox.south, bbox.east);
+    const approxCellW = Math.max(4, Math.abs(c2X - c1X) / Math.max(1, Math.sqrt(options.tiles.length)));
+    const approxCellH = Math.max(4, Math.abs(c2Y - c1Y) / Math.max(1, Math.sqrt(options.tiles.length)));
+
     ctx.globalAlpha = overlayOpacity;
     for (const tile of options.tiles) {
-      if (tile.ring.length < 4) continue;
-      const lngs = tile.ring.map((p) => p[0]);
-      const lats = tile.ring.map((p) => p[1]);
-      const [x1, y1] = project(Math.max(...lats), Math.min(...lngs));
-      const [x2, y2] = project(Math.min(...lats), Math.max(...lngs));
       ctx.fillStyle = scale.colorFor(tile.value);
-      ctx.fillRect(x1 - 0.3, y1 - 0.3, x2 - x1 + 0.6, y2 - y1 + 0.6);
+      if (tile.ring && tile.ring.length >= 3) {
+        const lngs = tile.ring.map((p) => p[0]);
+        const lats = tile.ring.map((p) => p[1]);
+        const [x1, y1] = project(Math.max(...lats), Math.min(...lngs));
+        const [x2, y2] = project(Math.min(...lats), Math.max(...lngs));
+        const left = Math.min(x1, x2);
+        const top = Math.min(y1, y2);
+        const w = Math.max(2, Math.abs(x2 - x1));
+        const h = Math.max(2, Math.abs(y2 - y1));
+        ctx.fillRect(left - 0.4, top - 0.4, w + 0.8, h + 0.8);
+      } else {
+        const [cx, cy] = project(tile.center.lat, tile.center.lng);
+        ctx.fillRect(cx - approxCellW / 2, cy - approxCellH / 2, approxCellW + 0.6, approxCellH + 0.6);
+      }
     }
     ctx.globalAlpha = 1;
   }
 
   const [aoiX1, aoiY1] = project(bbox.north, bbox.west);
   const [aoiX2, aoiY2] = project(bbox.south, bbox.east);
-  ctx.strokeStyle = "rgba(21,26,33,.55)";
+  ctx.strokeStyle = "#ffffff";
   ctx.setLineDash([5, 4]);
-  ctx.lineWidth = 1.25;
+  ctx.lineWidth = 1.75;
   ctx.strokeRect(aoiX1, aoiY1, aoiX2 - aoiX1, aoiY2 - aoiY1);
   ctx.setLineDash([]);
 
+  // Render Hotspots (Red badges)
   for (const hotspot of options.hotspots ?? []) {
     const [x, y] = project(hotspot.center.lat, hotspot.center.lng);
     const radius = 11;
@@ -151,6 +169,26 @@ export async function renderStaticMap(options: StaticMapOptions): Promise<string
     ctx.textBaseline = "middle";
     ctx.fillText(String(hotspot.rank), x, y + 0.5);
   }
+
+  // Render Cool Zones (Blue badges)
+  options.coolZones?.forEach((coolZone, idx) => {
+    const [x, y] = project(coolZone.center.lat, coolZone.center.lng);
+    const radius = 10;
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "#0284c7";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "600 10px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`❄${idx + 1}`, x, y + 0.5);
+  });
 
   ctx.fillStyle = "rgba(255,255,255,.82)";
   ctx.fillRect(0, height - 14, width, 14);
