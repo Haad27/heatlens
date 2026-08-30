@@ -422,7 +422,7 @@ export async function getForecast(
   const hourCount = Math.min(FORECAST_HORIZON_HOURS, Math.max(1, Math.round(hours)));
   const granularity = options.granularity ?? DEFAULT_GRANULARITY;
   const hourBucket = Math.floor(Date.now() / 3_600_000);
-  const key = cacheKey("fg-forecast", [
+  const key = cacheKey("fg-forecast-v2", [
     boxCacheKey(aoi),
     hourBucket,
     hourCount,

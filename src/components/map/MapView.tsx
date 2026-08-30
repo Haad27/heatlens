@@ -102,7 +102,7 @@ function ViewportController({
 }
 
 function hotspotIcon(hotspot: Hotspot, selected: boolean): L.DivIcon {
-  const color = SEVERITY_COLORS[hotspot.severityTier];
+  const color = "#e34a33"; // Always red so they stand out as hotspots (not blue 'watch')
   const size = selected ? 40 : 32;
   return L.divIcon({
     className: "hotspot-marker",
