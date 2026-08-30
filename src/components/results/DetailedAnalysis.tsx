@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Building2, Flame, TreePine } from "lucide-react";
+import ForecastSparkline from "@/components/charts/ForecastSparkline";
 import { cn } from "@/lib/format";
-import type { AnalysisBrief, BriefHotZone, CoolZone } from "@/lib/types";
+import type { AnalysisBrief, BriefHotZone, CoolZone, ForecastTrend } from "@/lib/types";
 
 type TabKey = "hotspots" | "vegetation" | "correlations";
 
@@ -12,6 +13,28 @@ const TABS: { key: TabKey; label: string; icon: typeof Flame }[] = [
   { key: "vegetation", label: "Vegetation Insights", icon: TreePine },
   { key: "correlations", label: "Urban Correlations", icon: Building2 },
 ];
+
+const TREND_LABEL: Record<ForecastTrend, string> = {
+  rising: "Rising",
+  falling: "Falling",
+  steady: "Steady",
+};
+
+function TrendChip({ trend }: { trend: ForecastTrend }) {
+  const color =
+    trend === "rising"
+      ? "bg-red-50 text-red-700 border-red-200"
+      : trend === "falling"
+        ? "bg-sky-50 text-sky-700 border-sky-200"
+        : "bg-ink-50 text-ink-700 border-ink-200";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${color}`}
+    >
+      {TREND_LABEL[trend]}
+    </span>
+  );
+}
 
 const SEVERITY_BADGE: Record<BriefHotZone["severity"], string> = {
   extreme: "bg-red-700 text-white",
@@ -117,6 +140,22 @@ function HotspotTab({
           </div>
         </div>
         <p className="mt-4 text-sm text-ink-600">{thermalOverview.summary}</p>
+        {thermalOverview.forecast && (
+          <details className="mt-4 border-t border-sky-200/80 pt-3" open>
+            <summary className="cursor-pointer text-xs font-medium text-ink-500">
+              <span className="inline-flex items-center gap-2">
+                <span>Next 12 hours</span>
+                <TrendChip trend={thermalOverview.forecast.trend} />
+              </span>
+            </summary>
+            <div className="mt-2">
+              <ForecastSparkline forecast={thermalOverview.forecast} />
+              <p className="mt-2 text-xs leading-relaxed text-ink-500">
+                {thermalOverview.forecast.sentence}
+              </p>
+            </div>
+          </details>
+        )}
       </div>
 
       <div>

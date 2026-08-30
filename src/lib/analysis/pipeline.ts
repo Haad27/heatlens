@@ -19,6 +19,7 @@ import {
 import {
   fetchEnvParams,
   fetchHeatGrid,
+  getForecast,
   hourRange,
   singleHour,
 } from "@/lib/fortyguard/client";
@@ -28,6 +29,10 @@ import { fetchTractDemographics } from "@/lib/datasources/census";
 import { profileLandCover } from "@/lib/datasources/landcover";
 import { fetchClimateTrend } from "@/lib/datasources/nasaPower";
 import { detectCoolZones, detectHotspots, sampleLayerWithin } from "@/lib/analysis/hotspots";
+import {
+  applyForecastRecommendationWindows,
+  computeForecastInsight,
+} from "@/lib/analysis/forecast";
 import { buildContributingFactors } from "@/lib/analysis/factors";
 import { buildVulnerability } from "@/lib/analysis/vulnerability";
 import { scoreSeverity } from "@/lib/analysis/severity";
@@ -412,6 +417,14 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
     ttlSeconds: ttl,
   };
 
+  // 12-hour forecast is additive and never blocks the historical snapshot.
+  // Started here so it overlaps the heatmap + enrichment work; a failure
+  // simply omits the Thermal Overview forecast block.
+  const forecastPromise = getForecast(box, FORECAST_HORIZON_HOURS, {
+    granularity,
+    timeZone: resolved.timeZone,
+  });
+
   const [grid, exceedanceGrid, persistenceGrid] = await Promise.all([
     fetchHeatGrid(snapshotQuery),
     fetchHeatGrid({
@@ -501,28 +514,33 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
     name: claimZoneName(request.center, cluster.center, usedCoolNames),
   }));
 
-  const [hotspots, coolZones, aoiLandCover, hourlyProfile, climateTrend] = await Promise.all([
-    Promise.all(
-      detection.clusters.map((cluster, index) =>
-        enrichHotspot(cluster, index + 1, finalExceedanceGrid, finalPersistenceGrid, window.hours),
+  const [hotspots, coolZones, aoiLandCover, hourlyProfile, climateTrend, forecastResult] =
+    await Promise.all([
+      Promise.all(
+        detection.clusters.map((cluster, index) =>
+          enrichHotspot(cluster, index + 1, finalExceedanceGrid, finalPersistenceGrid, window.hours),
+        ),
       ),
-    ),
-    Promise.all(
-      namedCoolClusters.map(async ({ cluster, index, name }) => {
-        const landCover = await profileLandCover(cluster.bbox).catch(() => null);
-        return toCoolZone(`cool-${index + 1}`, name, cluster, landCover);
-      }),
-    ),
-    profileLandCover(box).catch(() => null),
-    buildHourlyProfile(request.center, finalGrid.stats.mean, resolved, ttl),
-    fetchClimateTrend(request.center, thresholdC),
-  ]);
+      Promise.all(
+        namedCoolClusters.map(async ({ cluster, index, name }) => {
+          const landCover = await profileLandCover(cluster.bbox).catch(() => null);
+          return toCoolZone(`cool-${index + 1}`, name, cluster, landCover);
+        }),
+      ),
+      profileLandCover(box).catch(() => null),
+      buildHourlyProfile(request.center, finalGrid.stats.mean, resolved, ttl),
+      fetchClimateTrend(request.center, thresholdC),
+      forecastPromise,
+    ]);
 
   hotspots.sort((a, b) => b.severityScore - a.severityScore);
   hotspots.forEach((hotspot, index) => {
     hotspot.rank = index + 1;
     hotspot.id = `hotspot-${index + 1}`;
   });
+
+  const forecast = computeForecastInsight(forecastResult?.hours ?? [], thresholdC);
+  applyForecastRecommendationWindows(hotspots, forecast);
 
   const areaSqMeters = boxAreaSqMeters(box);
   const aboveThreshold = finalGrid.tiles.filter((t) => t.value >= thresholdC).length;
@@ -559,6 +577,7 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
     coolZones: coolZones as CoolZone[],
     aoiLandCover,
     heatGapC: summary.heatGapC,
+    forecast,
   });
 
   const insights = await generateInsights({

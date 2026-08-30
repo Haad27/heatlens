@@ -148,6 +148,11 @@ export interface Recommendation {
   /** Literature backing the cooling estimate. */
   evidence: string;
   priority: number;
+  /**
+   * Optional deployment window from the 12-hour forecast, e.g. "before 2:00 PM".
+   * Present only when the forecast shows a sustained extreme-heat stretch.
+   */
+  recommendedWindow?: string;
 }
 
 export interface Hotspot {
@@ -304,11 +309,41 @@ export interface AreaMetrics {
   buildingDensityPct: number;
 }
 
+export interface ForecastHourlyTemp {
+  /** Clock label in the AOI's local zone, e.g. "2:00 PM". */
+  hour: string;
+  hourLocal: number;
+  meanTemp: number;
+  maxTemp: number;
+}
+
+export type ForecastTrend = "rising" | "falling" | "steady";
+
+/**
+ * Deterministic 12-hour forecast insight for the Thermal Overview card.
+ * Omitted entirely when the forecast request fails, times out, or returns
+ * too few hours — never filled with placeholder numbers.
+ */
+export interface ForecastInsight {
+  hourlyMeanTemps: ForecastHourlyTemp[];
+  /** Local clock time of the hour with the highest predicted max temp. */
+  peakHour: string;
+  peakTempC: number;
+  /** Count of hours whose predicted max exceeds the NWS Extreme Caution threshold. */
+  hoursAboveThreshold: number;
+  trend: ForecastTrend;
+  /** One-sentence reading, from a template — not an LLM. */
+  sentence: string;
+  thresholdC: number;
+}
+
 export interface ThermalOverview {
   hotSpotCount: number;
   coolSpotCount: number;
   heatIslandSeverity: "High" | "Medium" | "Low";
   summary: string;
+  /** Present only when a 12-hour forecast was actually retrieved. */
+  forecast?: ForecastInsight;
 }
 
 export interface AggregatedRecommendation {
@@ -321,6 +356,8 @@ export interface AggregatedRecommendation {
   timeline: string;
   impactSummary: string;
   impactTier: ImpactTier;
+  /** e.g. "before 2:00 PM" — only set for time-sensitive quick wins. */
+  recommendedWindow?: string;
 }
 
 export interface AnalysisBrief {

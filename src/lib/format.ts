@@ -79,6 +79,14 @@ export function formatClockHour(hour: number): string {
   return normalized < 12 ? `${normalized}a` : `${normalized - 12}p`;
 }
 
+/** Full wall-clock label, e.g. "2:00 PM". */
+export function formatClockHourLong(hour: number): string {
+  const normalized = ((hour % 24) + 24) % 24;
+  const suffix = normalized >= 12 ? "PM" : "AM";
+  const display = normalized % 12 === 0 ? 12 : normalized % 12;
+  return `${display}:00 ${suffix}`;
+}
+
 export function formatIsoDate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;

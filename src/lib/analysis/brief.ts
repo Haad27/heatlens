@@ -7,6 +7,7 @@ import type {
   BriefIntensity,
   BriefSeverity,
   CoolZone,
+  ForecastInsight,
   GreenOpportunity,
   Hotspot,
   LatLng,
@@ -440,6 +441,7 @@ export function buildBrief(input: {
   coolZones: CoolZone[];
   aoiLandCover: LandCoverProfile | null;
   heatGapC: number;
+  forecast?: ForecastInsight | null;
 }): AnalysisBrief {
   const used = new Set<string>();
   const namedHotspots = input.hotspots.map((hotspot) => ({
@@ -538,6 +540,7 @@ export function buildBrief(input: {
       coolSpotCount: input.coolZones.length,
       heatIslandSeverity: severity,
       summary: thermalSummary(hotZones.length, input.coolZones.length, severity),
+      ...(input.forecast ? { forecast: input.forecast } : {}),
     },
     hotZones,
     coolZones: input.coolZones,

@@ -1,11 +1,14 @@
 import {
+  CACHE_TTL_SECONDS,
   DEFAULT_GRANULARITY,
+  FORECAST_HORIZON_HOURS,
   FORTYGUARD_API_KEY,
   FORTYGUARD_BASE_URL,
   FORTYGUARD_MOCK_MODE,
 } from "@/lib/config";
 import { cacheKey, cached } from "@/lib/cache";
 import { boxCacheKey, boxToFeatureCollection, ringBox, ringCentroid } from "@/lib/geo";
+import { floorToHour, localParts, utcParts } from "@/lib/time";
 import type {
   AnalyticLayer,
   BoundingBox,
@@ -382,6 +385,132 @@ export async function fetchHeatGrid(query: HeatmapQuery): Promise<HeatGrid> {
     stats,
     distribution: distributionFrom(tiles, unit === "celsius" ? 0.5 : 1),
     provenance,
+  };
+}
+
+export interface ForecastHourSample {
+  timestamp: string;
+  hourLocal: number;
+  meanTemp: number;
+  maxTemp: number;
+}
+
+export interface ForecastFetchResult {
+  hours: ForecastHourSample[];
+  provenance: Provenance;
+}
+
+const FORECAST_BUDGET_MS = 50_000;
+
+/**
+ * Next `hours` of predicted TCM for an AOI.
+ *
+ * FortyGuard has no dedicated forecast endpoint: a heatmap whose `date_time`
+ * sits up to 12 hours ahead of now is the forecast. TCM is one value per tile
+ * per request, so hourly points are one submission each. Results are cached on
+ * AOI + hour-bucket with the short forecast TTL — the same query within the
+ * hour does not spend another set of credits.
+ *
+ * Returns null rather than a partial/guessed series when the request fails,
+ * times out, or yields fewer than three usable hours.
+ */
+export async function getForecast(
+  aoi: BoundingBox,
+  hours = 12,
+  options: { granularity?: number; timeZone: string },
+): Promise<ForecastFetchResult | null> {
+  const hourCount = Math.min(FORECAST_HORIZON_HOURS, Math.max(1, Math.round(hours)));
+  const granularity = options.granularity ?? DEFAULT_GRANULARITY;
+  const hourBucket = Math.floor(Date.now() / 3_600_000);
+  const key = cacheKey("fg-forecast", [
+    boxCacheKey(aoi),
+    hourBucket,
+    hourCount,
+    granularity,
+    FORTYGUARD_MOCK_MODE ? "mock" : "live",
+  ]);
+
+  try {
+    const result = await Promise.race([
+      cached<ForecastFetchResult | null>(key, CACHE_TTL_SECONDS.forecast, () =>
+        fetchForecastHours(aoi, hourCount, granularity, options.timeZone),
+      ),
+      sleep(FORECAST_BUDGET_MS).then(() => null),
+    ]);
+    if (!result || result.hours.length < 3) return null;
+    return result;
+  } catch (error) {
+    console.warn(
+      "   ⚠️ [FortyGuard] 12-hour forecast unavailable:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+async function fetchForecastHours(
+  aoi: BoundingBox,
+  hourCount: number,
+  granularity: number,
+  timeZone: string,
+): Promise<ForecastFetchResult | null> {
+  const start = floorToHour(new Date());
+  const settled = await Promise.allSettled(
+    Array.from({ length: hourCount }, (_, offset) =>
+      fetchOneForecastHour(aoi, start, offset, granularity, timeZone),
+    ),
+  );
+
+  const hours: ForecastHourSample[] = [];
+  for (const item of settled) {
+    if (item.status === "fulfilled" && item.value) hours.push(item.value);
+  }
+  hours.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  if (hours.length < 3) return null;
+
+  console.log(`   🔮 [FortyGuard] 12-hour forecast: ${hours.length} hourly grids`);
+
+  return {
+    hours,
+    provenance: {
+      status: FORTYGUARD_MOCK_MODE ? "demo" : "live",
+      source: `${FORTYGUARD_ATTRIBUTION} — 12-hour forecast`,
+      fetchedAt: new Date().toISOString(),
+      observedAt: hours[0]?.timestamp,
+      note: FORTYGUARD_MOCK_MODE
+        ? "Simulated 12-hour forecast. Add FORTYGUARD_API_KEY to switch to predicted data."
+        : `${hours.length} hourly ${granularity} m snapshots from now.`,
+    },
+  };
+}
+
+async function fetchOneForecastHour(
+  aoi: BoundingBox,
+  start: Date,
+  offsetHours: number,
+  granularity: number,
+  timeZone: string,
+): Promise<ForecastHourSample | null> {
+  const instant = new Date(start.getTime() + offsetHours * 3_600_000);
+  const utc = utcParts(instant);
+
+  const grid = await fetchHeatGrid({
+    box: aoi,
+    dateTime: singleHour(utc.date, utc.time),
+    granularity,
+    layer: "tcm",
+    observedAt: instant.toISOString(),
+    ttlSeconds: CACHE_TTL_SECONDS.forecast,
+  });
+
+  if (!grid.tiles.length) return null;
+  if (!Number.isFinite(grid.stats.mean) || !Number.isFinite(grid.stats.max)) return null;
+
+  return {
+    timestamp: instant.toISOString(),
+    hourLocal: localParts(instant, timeZone).hour,
+    meanTemp: grid.stats.mean,
+    maxTemp: grid.stats.max,
   };
 }
 
