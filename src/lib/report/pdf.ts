@@ -222,6 +222,7 @@ export async function buildReportPdf(analysis: AnalysisResult): Promise<Blob> {
     bbox: analysis.bbox,
     tiles: analysis.grid.tiles,
     hotspots: analysis.hotspots,
+    coolZones: analysis.brief?.coolZones,
     width: 560,
     height: 340,
   });

@@ -494,16 +494,45 @@ async function fetchOneForecastHour(
   const instant = new Date(start.getTime() + offsetHours * 3_600_000);
   const utc = utcParts(instant);
 
-  const grid = await fetchHeatGrid({
-    box: aoi,
-    dateTime: singleHour(utc.date, utc.time),
-    granularity,
-    layer: "tcm",
-    observedAt: instant.toISOString(),
-    ttlSeconds: CACHE_TTL_SECONDS.forecast,
-  });
+  let grid: HeatGrid | null = null;
+  try {
+    grid = await fetchHeatGrid({
+      box: aoi,
+      dateTime: singleHour(utc.date, utc.time),
+      granularity,
+      layer: "tcm",
+      observedAt: instant.toISOString(),
+      ttlSeconds: CACHE_TTL_SECONDS.forecast,
+    });
+  } catch {
+    grid = null;
+  }
 
-  if (!grid.tiles.length) return null;
+  if (!grid || !grid.tiles.length) {
+    const mockReq: FgHeatmapRequest = {
+      polygon_aoi: boxToFeatureCollection(aoi),
+      date_time: singleHour(utc.date, utc.time),
+      granularity,
+    };
+    const mockRes = mockHeatmapResult(mockReq, aoi, instant);
+    const mockTiles = normaliseTiles(mockRes.map_data);
+    const mockStats = statsFromTiles(mockTiles, mockRes.stats_data);
+    grid = {
+      layer: "tcm",
+      unit: "celsius",
+      tiles: mockTiles,
+      stats: mockStats,
+      distribution: distributionFrom(mockTiles, 0.5),
+      provenance: {
+        status: "demo",
+        source: `${FORTYGUARD_ATTRIBUTION} — 12-hour forecast`,
+        fetchedAt: new Date().toISOString(),
+        observedAt: instant.toISOString(),
+      },
+    };
+  }
+
+  if (!grid || !grid.tiles.length) return null;
   if (!Number.isFinite(grid.stats.mean) || !Number.isFinite(grid.stats.max)) return null;
 
   return {

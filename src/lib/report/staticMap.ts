@@ -121,19 +121,26 @@ export async function renderStaticMap(options: StaticMapOptions): Promise<string
     const approxCellW = Math.max(4, Math.abs(c2X - c1X) / Math.max(1, Math.sqrt(options.tiles.length)));
     const approxCellH = Math.max(4, Math.abs(c2Y - c1Y) / Math.max(1, Math.sqrt(options.tiles.length)));
 
-    ctx.globalAlpha = overlayOpacity;
     for (const tile of options.tiles) {
-      ctx.fillStyle = scale.colorFor(tile.value);
+      const color = scale.colorFor(tile.value);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.8;
+      ctx.globalAlpha = overlayOpacity;
+
       if (tile.ring && tile.ring.length >= 3) {
-        const lngs = tile.ring.map((p) => p[0]);
-        const lats = tile.ring.map((p) => p[1]);
-        const [x1, y1] = project(Math.max(...lats), Math.min(...lngs));
-        const [x2, y2] = project(Math.min(...lats), Math.max(...lngs));
-        const left = Math.min(x1, x2);
-        const top = Math.min(y1, y2);
-        const w = Math.max(2, Math.abs(x2 - x1));
-        const h = Math.max(2, Math.abs(y2 - y1));
-        ctx.fillRect(left - 0.4, top - 0.4, w + 0.8, h + 0.8);
+        ctx.beginPath();
+        const [firstLng, firstLat] = tile.ring[0];
+        const [startX, startY] = project(firstLat, firstLng);
+        ctx.moveTo(startX, startY);
+        for (let i = 1; i < tile.ring.length; i++) {
+          const [lng, lat] = tile.ring[i];
+          const [px, py] = project(lat, lng);
+          ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
       } else {
         const [cx, cy] = project(tile.center.lat, tile.center.lng);
         ctx.fillRect(cx - approxCellW / 2, cy - approxCellH / 2, approxCellW + 0.6, approxCellH + 0.6);

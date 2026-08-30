@@ -37,18 +37,7 @@ function readIndex(): string[] {
 export function cacheAnalysisLocally(result: AnalysisResult): void {
   if (!available()) return;
   try {
-    const slim: AnalysisResult = {
-      ...result,
-      grid: { ...result.grid, tiles: [] },
-      exceedanceGrid: result.exceedanceGrid
-        ? { ...result.exceedanceGrid, tiles: [] }
-        : undefined,
-      persistenceGrid: result.persistenceGrid
-        ? { ...result.persistenceGrid, tiles: [] }
-        : undefined,
-    };
-
-    window.localStorage.setItem(`${PREFIX}${result.id}`, JSON.stringify(slim));
+    window.localStorage.setItem(`${PREFIX}${result.id}`, JSON.stringify(result));
 
     const index = [result.id, ...readIndex().filter((id) => id !== result.id)];
     for (const stale of index.slice(MAX_ENTRIES)) {
