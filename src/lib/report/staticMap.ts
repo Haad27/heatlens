@@ -164,7 +164,7 @@ export async function renderStaticMap(options: StaticMapOptions): Promise<string
 
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = SEVERITY_COLORS[hotspot.severityTier];
+    ctx.fillStyle = "#e34a33"; // Match MapView hotspot red
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#ffffff";
