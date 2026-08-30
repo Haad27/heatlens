@@ -172,12 +172,15 @@ function HotspotTab({
               <li key={zone.id}>
                 <button
                   type="button"
-                  onClick={() => onSelectHotspot(active ? null : zone.hotspotId)}
+                  onClick={() => {
+                    onSelectHotspot(active ? null : zone.hotspotId);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                   className={cn(
-                    "flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition",
+                    "flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200",
                     active
-                      ? "border-red-200 bg-red-50"
-                      : "border-red-100 bg-red-50/70 hover:border-red-200",
+                      ? "border-red-300 bg-red-50 shadow-sm ring-1 ring-red-200"
+                      : "border-red-100 bg-red-50/70 hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md",
                   )}
                 >
                   <div className="min-w-0">
@@ -200,30 +203,44 @@ function HotspotTab({
         </ul>
       </div>
 
-      {coolZones.length > 0 && (
-        <div>
+      {coolZones && coolZones.length > 0 && (
+        <div className="mt-8">
           <h3 className="text-base font-semibold text-ink-900">Cool Zones</h3>
           <ul className="mt-3 space-y-2.5">
-            {coolZones.map((zone) => (
-              <li
-                key={zone.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-sky-100 bg-sky-50/80 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-sky-900">{zone.name}</p>
-                  <p className="mt-1 text-sm text-ink-600">{zone.description}</p>
-                  <p className="mt-2 text-sm font-semibold text-sky-700">Source: {zone.source}</p>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize",
-                    INTENSITY_BADGE[zone.intensity],
-                  )}
-                >
-                  {zone.intensity}
-                </span>
-              </li>
-            ))}
+            {coolZones.map((zone) => {
+              const active = zone.id === selectedHotspotId;
+              return (
+                <li key={zone.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectHotspot(active ? null : zone.id);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className={cn(
+                      "flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200",
+                      active
+                        ? "border-sky-300 bg-sky-50 shadow-sm ring-1 ring-sky-200"
+                        : "border-sky-100 bg-sky-50/80 hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md",
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-sky-900">{zone.name}</p>
+                      <p className="mt-1 text-sm text-ink-600">{zone.description}</p>
+                      <p className="mt-2 text-sm font-semibold text-sky-700">Source: {zone.source}</p>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize",
+                        INTENSITY_BADGE[zone.intensity],
+                      )}
+                    >
+                      {zone.intensity}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

@@ -58,15 +58,15 @@ function MapClickHandler({
 function ViewportController({
   bbox,
   center,
-  selectedHotspot,
+  selectedZone,
 }: {
   bbox?: BoundingBox;
   center: LatLng;
-  selectedHotspot: Hotspot | null;
+  selectedZone: { id: string; center: LatLng } | null;
 }) {
   const map = useMap();
   const lastBboxKey = useRef<string | null>(null);
-  const lastHotspotId = useRef<string | null>(null);
+  const lastZoneId = useRef<string | null>(null);
 
   useEffect(() => {
     map.invalidateSize();
@@ -87,16 +87,16 @@ function ViewportController({
   }, [map, bbox, center.lat, center.lng]);
 
   useEffect(() => {
-    if (!selectedHotspot) {
-      lastHotspotId.current = null;
+    if (!selectedZone) {
+      lastZoneId.current = null;
       return;
     }
-    if (selectedHotspot.id === lastHotspotId.current) return;
-    lastHotspotId.current = selectedHotspot.id;
-    map.flyTo([selectedHotspot.center.lat, selectedHotspot.center.lng], Math.max(map.getZoom(), 16), {
+    if (selectedZone.id === lastZoneId.current) return;
+    lastZoneId.current = selectedZone.id;
+    map.flyTo([selectedZone.center.lat, selectedZone.center.lng], Math.max(map.getZoom(), 16), {
       duration: 0.8,
     });
-  }, [map, selectedHotspot]);
+  }, [map, selectedZone]);
 
   return null;
 }
@@ -134,19 +134,24 @@ const centerIcon = () =>
     html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:#0d857e;border:3px solid #fff;box-shadow:0 2px 6px rgba(12,16,21,.4);"></span>`,
   });
 
-function coolZoneIcon(index: number): L.DivIcon {
-  const size = 30;
+function coolZoneIcon(index: number, selected: boolean): L.DivIcon {
+  const size = selected ? 38 : 30;
   return L.divIcon({
     className: "coolzone-marker",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     html: `
       <div style="position:relative;width:${size}px;height:${size}px;">
+        ${
+          selected
+            ? `<span class="pulse-ring" style="position:absolute;inset:0;border-radius:9999px;background:#0284c7;opacity:.45;"></span>`
+            : ""
+        }
         <span style="
           position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
           border-radius:9999px;background:#0284c7;color:#fff;
-          font:600 12px/1 var(--font-sans, system-ui);
-          border:2px solid #fff;
+          font:600 ${selected ? 14 : 12}px/1 var(--font-sans, system-ui);
+          border:${selected ? 3 : 2}px solid #fff;
           box-shadow:0 2px 6px rgba(2,132,199,.4);
         ">❄${index + 1}</span>
       </div>`,
@@ -178,6 +183,10 @@ export default function MapView({
   }, [grid]);
 
   const selectedHotspot = hotspots.find((h) => h.id === selectedHotspotId) ?? null;
+  const selectedZone = 
+    selectedHotspot ?? 
+    coolZones?.find((c) => c.id === selectedHotspotId) ?? 
+    null;
 
   return (
     <div className="relative h-full w-full">
@@ -217,7 +226,7 @@ export default function MapView({
           />
         )}
 
-        <ViewportController bbox={bbox} center={center} selectedHotspot={selectedHotspot} />
+        <ViewportController bbox={bbox} center={center} selectedZone={selectedZone} />
         <MapClickHandler enabled={pickMode && !staticMode} onPick={onPickLocation} />
 
         {grid && grid.tiles.length > 0 && (
@@ -278,8 +287,12 @@ export default function MapView({
           <Marker
             key={zone.id}
             position={[zone.center.lat, zone.center.lng]}
-            icon={coolZoneIcon(index)}
-            zIndexOffset={900}
+            icon={coolZoneIcon(index, zone.id === selectedHotspotId)}
+            eventHandlers={{
+              click: () =>
+                onSelectHotspot(zone.id === selectedHotspotId ? null : zone.id),
+            }}
+            zIndexOffset={zone.id === selectedHotspotId ? 1500 : 900}
           />
         ))}
       </MapContainer>
